@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/src/components/ui/card";
-import { ArrowLeft, Plus, Search, Download, Filter, FileUp, FileSpreadsheet, X, Trash2, Edit, CheckSquare } from "lucide-react";
+import { ArrowLeft, Plus, Search, Download, FileUp, X, Trash2, Edit, CheckSquare, AlertTriangle } from "lucide-react";
 import * as XLSX from "xlsx";
 
 // Helper to generate a unique ID for each row
@@ -25,6 +25,14 @@ export default function ModulePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [editId, setEditId] = useState<string | null>(null);
+
+  // Confirm Dialog State
+  const [confirmDialog, setConfirmDialog] = useState<{isOpen: boolean, title: string, message: string, onConfirm: () => void}>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {}
+  });
 
   // Format ID to readable title
   const title = id
@@ -98,6 +106,25 @@ export default function ModulePage() {
     fileInputRef.current?.click();
   };
 
+  const handleExportExcel = () => {
+    if (tableData.length === 0) {
+      alert("Không có dữ liệu để xuất!");
+      return;
+    }
+    
+    // Remove _id before exporting
+    const exportData = tableData.map(row => {
+      const newRow = { ...row };
+      delete newRow._id;
+      return newRow;
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(exportData, { header: headers });
+    XLSX.utils.book_append_sheet(wb, ws, title);
+    XLSX.writeFile(wb, `${title}_Export.xlsx`);
+  };
+
   const handleAddNew = () => {
     if (headers.length === 0) {
       const defaultHeaders = ["ID", "Tên", "Mô tả", "Ngày tạo", "Trạng thái"];
@@ -130,31 +157,55 @@ export default function ModulePage() {
     setIsModalOpen(false);
   };
 
+  const confirmDelete = (action: () => void, title: string, message: string) => {
+    setConfirmDialog({
+      isOpen: true,
+      title,
+      message,
+      onConfirm: () => {
+        action();
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
   const handleDeleteRow = (rowId: string) => {
-    if (confirm("Bạn có chắc chắn muốn xóa bản ghi này?")) {
-      const newData = tableData.filter(row => row._id !== rowId);
-      saveDataAndHeaders(headers, newData);
-      
-      const newSelected = new Set(selectedIds);
-      newSelected.delete(rowId);
-      setSelectedIds(newSelected);
-    }
+    confirmDelete(
+      () => {
+        const newData = tableData.filter(row => row._id !== rowId);
+        saveDataAndHeaders(headers, newData);
+        
+        const newSelected = new Set(selectedIds);
+        newSelected.delete(rowId);
+        setSelectedIds(newSelected);
+      },
+      "Xóa bản ghi",
+      "Bạn có chắc chắn muốn xóa bản ghi này? Hành động này không thể hoàn tác."
+    );
   };
 
   const handleDeleteSelected = () => {
     if (selectedIds.size === 0) return;
-    if (confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.size} bản ghi đã chọn?`)) {
-      const newData = tableData.filter(row => !selectedIds.has(row._id));
-      saveDataAndHeaders(headers, newData);
-      setSelectedIds(new Set());
-    }
+    confirmDelete(
+      () => {
+        const newData = tableData.filter(row => !selectedIds.has(row._id));
+        saveDataAndHeaders(headers, newData);
+        setSelectedIds(new Set());
+      },
+      "Xóa nhiều bản ghi",
+      `Bạn có chắc chắn muốn xóa ${selectedIds.size} bản ghi đã chọn? Hành động này không thể hoàn tác.`
+    );
   };
 
   const handleClearData = () => {
-    if (confirm("Bạn có chắc chắn muốn xóa TOÀN BỘ dữ liệu của mục này?")) {
-      saveDataAndHeaders([], []);
-      setSelectedIds(new Set());
-    }
+    confirmDelete(
+      () => {
+        saveDataAndHeaders([], []);
+        setSelectedIds(new Set());
+      },
+      "Xóa toàn bộ dữ liệu",
+      "Bạn có chắc chắn muốn xóa TOÀN BỘ dữ liệu của mục này? Hành động này không thể hoàn tác."
+    );
   };
 
   const toggleSelectAll = () => {
@@ -201,11 +252,6 @@ export default function ModulePage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" className="gap-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 border-emerald-200">
-            <FileSpreadsheet className="h-4 w-4" />
-            Nhập từ Google Sheets
-          </Button>
-          
           <input 
             type="file" 
             ref={fileInputRef} 
@@ -218,7 +264,7 @@ export default function ModulePage() {
             Nhập Excel/CSV
           </Button>
           
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={handleExportExcel}>
             <Download className="h-4 w-4" />
             Xuất Excel
           </Button>
@@ -231,21 +277,17 @@ export default function ModulePage() {
 
       <Card>
         <CardHeader className="pb-4 border-b border-slate-100">
-          <div className="flex flex-col sm:flex-row gap-4 justify-between">
-            <div className="relative w-full sm:w-96">
+          <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+            <div className="relative w-full sm:w-96 h-10">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input 
                 placeholder="Tìm kiếm trong mọi cột..." 
-                className="pl-9" 
+                className="pl-9 h-full w-full" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" className="gap-2" onClick={() => alert("Tính năng lọc nâng cao đang được phát triển. Vui lòng sử dụng ô tìm kiếm để lọc dữ liệu.")}>
-                <Filter className="h-4 w-4" />
-                Bộ lọc
-              </Button>
               {selectedIds.size > 0 && (
                 <Button variant="destructive" className="gap-2" onClick={handleDeleteSelected}>
                   <CheckSquare className="h-4 w-4" />
@@ -371,6 +413,33 @@ export default function ModulePage() {
             <CardFooter className="flex justify-end gap-2 border-t pt-4">
               <Button variant="outline" onClick={() => setIsModalOpen(false)}>Hủy bỏ</Button>
               <Button onClick={handleSaveData}>Lưu dữ liệu</Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+
+      {/* Custom Confirm Dialog */}
+      {confirmDialog.isOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-[60] p-4">
+          <Card className="w-full max-w-sm shadow-lg border-red-100">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center shrink-0">
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                </div>
+                <CardTitle className="text-lg">{confirmDialog.title}</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-slate-600 text-sm">{confirmDialog.message}</p>
+            </CardContent>
+            <CardFooter className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}>
+                Hủy bỏ
+              </Button>
+              <Button variant="destructive" onClick={confirmDialog.onConfirm}>
+                Xác nhận xóa
+              </Button>
             </CardFooter>
           </Card>
         </div>
