@@ -125,7 +125,7 @@ export default function Login() {
         <CardHeader className="space-y-2 text-center">
           <div className="flex justify-center mb-4">
             <div className="h-24 w-24 rounded-2xl overflow-hidden shadow-md border border-slate-200">
-              <img src="/logo.jpg" alt="CDX Logo" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+              <img src="/logo.png" alt="CDX Logo" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             </div>
           </div>
           <CardTitle className="text-2xl font-bold">Quản lý thi công CDX</CardTitle>
