@@ -1,21 +1,121 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/src/components/ui/card";
-import { Building2 } from "lucide-react";
 
 export default function Login() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [userId, setUserId] = useState("");
+  const [appPass, setAppPass] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Initialize default admin if no users exist
+  useEffect(() => {
+    const initializeAdmin = async () => {
+      try {
+        const res = await fetch("/api/modules/quan-ly-nhan-su");
+        if (res.ok) {
+          const data = await res.json();
+          if (!data.data || data.data.length === 0) {
+            const defaultAdmin = [
+              {
+                _id: "default-admin-id",
+                ID: "admin",
+                app_pass: "admin",
+                "Phân quyền": "admin",
+                "Tên": "Quản trị viên"
+              }
+            ];
+            const defaultHeaders = ["ID", "Tên", "app_pass", "Phân quyền"];
+            
+            await fetch("/api/modules/quan-ly-nhan-su", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ headers: defaultHeaders, data: defaultAdmin }),
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Failed to initialize admin:", error);
+      }
+    };
+    initializeAdmin();
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, you would validate credentials here
-    if (username && password) {
+    setError("");
+
+    if (!userId || !appPass) {
+      setError("Vui lòng nhập đầy đủ ID và App Pass");
+      return;
+    }
+
+    let users = [];
+    try {
+      const res = await fetch("/api/modules/quan-ly-nhan-su");
+      if (res.ok) {
+        const data = await res.json();
+        users = data.data || [];
+      }
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+    }
+
+    // Find user by ID (case-insensitive key match just in case)
+    const user = users.find((u: any) => {
+      const keys = Object.keys(u);
+      
+      const idKey = keys.find(k => {
+        const lower = k.toLowerCase().trim();
+        return lower === "id" || lower === "mã nv" || lower === "mã nhân viên" || lower === "manv";
+      });
+      
+      const passKey = keys.find(k => {
+        const lower = k.toLowerCase().trim();
+        return lower === "app_pass" || lower === "app pass" || lower === "password" || lower === "mật khẩu" || lower === "mat khau" || lower === "pass";
+      });
+
+      if (!idKey || !passKey) return false;
+      
+      return String(u[idKey]).trim() === userId.trim() && String(u[passKey]).trim() === appPass.trim();
+    });
+
+    if (user) {
+      const keys = Object.keys(user);
+      const roleKey = keys.find(k => {
+        const lower = k.toLowerCase().trim();
+        return lower === "phân quyền" || lower === "phan quyen" || lower === "role" || lower === "quyền" || lower === "quyen";
+      });
+      const nameKey = keys.find(k => {
+        const lower = k.toLowerCase().trim();
+        return lower === "tên" || lower === "name" || lower === "họ và tên" || lower === "ho ten" || lower === "họ tên";
+      });
+
+      const role = roleKey ? String(user[roleKey]).toLowerCase() : "user";
+      const userName = nameKey ? String(user[nameKey]) : userId;
+      
       localStorage.setItem("isAuthenticated", "true");
+      localStorage.setItem("currentUser", JSON.stringify({ 
+        id: userId, 
+        name: userName,
+        role: role.includes("admin") ? "admin" : "user" 
+      }));
+      
       navigate("/");
+    } else if (userId === "admin" && appPass === "admin") {
+      // Fallback master admin in case local storage has data but no admin account
+      localStorage.setItem("isAuthenticated", "true");
+      localStorage.setItem("currentUser", JSON.stringify({ 
+        id: "admin", 
+        name: "Quản trị viên",
+        role: "admin" 
+      }));
+      
+      navigate("/");
+    } else {
+      setError("ID hoặc App Pass không chính xác!");
     }
   };
 
@@ -35,28 +135,33 @@ export default function Login() {
         </CardHeader>
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
+            {error && (
+              <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+                {error}
+              </div>
+            )}
             <div className="space-y-2">
-              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="username">
-                Tên đăng nhập
+              <label className="text-sm font-medium leading-none" htmlFor="userId">
+                ID Nhân viên
               </label>
               <Input
-                id="username"
-                placeholder="Nhập tên đăng nhập"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                id="userId"
+                placeholder="Nhập ID (VD: admin)"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
                 required
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="password">
-                Mật khẩu
+              <label className="text-sm font-medium leading-none" htmlFor="appPass">
+                App Pass
               </label>
               <Input
-                id="password"
+                id="appPass"
                 type="password"
-                placeholder="Nhập mật khẩu"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Nhập App Pass"
+                value={appPass}
+                onChange={(e) => setAppPass(e.target.value)}
                 required
               />
             </div>

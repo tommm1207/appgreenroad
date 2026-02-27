@@ -1,28 +1,42 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, FileBarChart, Users, LogOut, Building2, Wallet, Package, UsersRound, Settings, CalendarCheck, Menu, X } from "lucide-react";
+import { LayoutDashboard, FileBarChart, Users, LogOut, Building2, Wallet, Package, UsersRound, Settings, CalendarCheck, Menu, X, ShieldAlert } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { Button } from "@/src/components/ui/button";
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [userRole, setUserRole] = useState("user");
+  const [userName, setUserName] = useState("");
+
+  useEffect(() => {
+    const userStr = localStorage.getItem("currentUser");
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      setUserRole(user.role || "user");
+      setUserName(user.name || user.id);
+    }
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("currentUser");
     navigate("/login");
   };
 
-  const navItems = [
-    { name: "Tổng quan", path: "/", icon: LayoutDashboard },
-    { name: "Chi phí", path: "/costs", icon: Wallet },
-    { name: "Quản lý Kho", path: "/inventory", icon: Package },
-    { name: "Đối tác", path: "/partners", icon: UsersRound },
-    { name: "Chấm công", path: "/attendance", icon: CalendarCheck },
-    { name: "Nhân sự", path: "/hr", icon: Users },
-    { name: "Báo cáo", path: "/reports", icon: FileBarChart },
-    { name: "Hệ thống", path: "/system", icon: Settings },
+  const allNavItems = [
+    { name: "Tổng quan", path: "/", icon: LayoutDashboard, roles: ["admin", "user"] },
+    { name: "Quản lý Kho", path: "/inventory", icon: Package, roles: ["admin", "user"] },
+    { name: "Chấm công", path: "/attendance", icon: CalendarCheck, roles: ["admin", "user"] },
+    { name: "Báo cáo", path: "/reports", icon: FileBarChart, roles: ["admin", "user"] },
+    { name: "Chi phí", path: "/costs", icon: Wallet, roles: ["admin"] },
+    { name: "Đối tác", path: "/partners", icon: UsersRound, roles: ["admin"] },
+    { name: "Nhân sự", path: "/hr", icon: Users, roles: ["admin"] },
+    { name: "Hệ thống", path: "/system", icon: Settings, roles: ["admin"] },
   ];
+
+  const navItems = allNavItems.filter(item => item.roles.includes(userRole));
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false);
@@ -73,6 +87,21 @@ export default function DashboardLayout() {
           </Button>
         </div>
         
+        <div className="px-4 pt-4 pb-2">
+          <div className="bg-slate-100 rounded-lg p-3 flex items-center gap-3">
+            <div className="h-8 w-8 bg-emerald-200 rounded-full flex items-center justify-center text-emerald-800 font-bold">
+              {userName.charAt(0).toUpperCase()}
+            </div>
+            <div className="overflow-hidden">
+              <p className="text-sm font-bold text-slate-900 truncate">{userName}</p>
+              <p className="text-xs text-slate-500 flex items-center gap-1">
+                {userRole === 'admin' ? <ShieldAlert className="h-3 w-3 text-amber-500" /> : null}
+                {userRole === 'admin' ? 'Quản trị viên' : 'Nhân viên'}
+              </p>
+            </div>
+          </div>
+        </div>
+
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => (
             <NavLink

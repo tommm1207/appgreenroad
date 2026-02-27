@@ -39,32 +39,49 @@ export default function ModulePage() {
     ? id.split("-").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")
     : "Module";
 
-  // Load data from localStorage when component mounts or ID changes
+  // Load data from API when component mounts or ID changes
   useEffect(() => {
-    const savedData = localStorage.getItem(`cdx_data_${id}`);
-    const savedHeaders = localStorage.getItem(`cdx_headers_${id}`);
+    const fetchData = async () => {
+      try {
+        const res = await fetch(`/api/modules/${id}`);
+        if (res.ok) {
+          const result = await res.json();
+          let parsedData = result.data || [];
+          // Ensure all rows have a unique _id for selection and editing
+          parsedData = parsedData.map((row: any) => row._id ? row : { ...row, _id: generateId() });
+          setTableData(parsedData);
+          setHeaders(result.headers || []);
+        } else {
+          setTableData([]);
+          setHeaders([]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch module data:", error);
+        setTableData([]);
+        setHeaders([]);
+      }
+      setSelectedIds(new Set());
+      setSearchQuery("");
+    };
     
-    if (savedData && savedHeaders) {
-      let parsedData = JSON.parse(savedData);
-      // Ensure all rows have a unique _id for selection and editing
-      parsedData = parsedData.map((row: any) => row._id ? row : { ...row, _id: generateId() });
-      setTableData(parsedData);
-      setHeaders(JSON.parse(savedHeaders));
-    } else {
-      setTableData([]);
-      setHeaders([]);
-    }
-    setSelectedIds(new Set());
-    setSearchQuery("");
+    fetchData();
   }, [id]);
 
-  // Helper to save data to both state and localStorage
-  const saveDataAndHeaders = (newHeaders: string[], newData: any[]) => {
+  // Helper to save data to both state and API
+  const saveDataAndHeaders = async (newHeaders: string[], newData: any[]) => {
     const cleanHeaders = newHeaders.filter(h => h !== '_id'); // Prevent _id from showing as a column
     setHeaders(cleanHeaders);
     setTableData(newData);
-    localStorage.setItem(`cdx_headers_${id}`, JSON.stringify(cleanHeaders));
-    localStorage.setItem(`cdx_data_${id}`, JSON.stringify(newData));
+    
+    try {
+      await fetch(`/api/modules/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ headers: cleanHeaders, data: newData }),
+      });
+    } catch (error) {
+      console.error("Failed to save module data:", error);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,9 +144,14 @@ export default function ModulePage() {
 
   const handleAddNew = () => {
     if (headers.length === 0) {
-      const defaultHeaders = ["ID", "Tên", "Mô tả", "Ngày tạo", "Trạng thái"];
-      setHeaders(defaultHeaders);
-      localStorage.setItem(`cdx_headers_${id}`, JSON.stringify(defaultHeaders));
+      let defaultHeaders = ["ID", "Tên", "Mô tả", "Ngày tạo", "Trạng thái"];
+      
+      // Specific default headers for HR module to support login
+      if (id === "quan-ly-nhan-su") {
+        defaultHeaders = ["ID", "Tên", "app_pass", "Phân quyền", "Phòng ban", "Trạng thái"];
+      }
+      
+      saveDataAndHeaders(defaultHeaders, tableData);
     }
     setFormData({});
     setEditId(null);

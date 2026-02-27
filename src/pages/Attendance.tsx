@@ -27,18 +27,34 @@ export default function Attendance() {
 
   // Load data
   useEffect(() => {
-    const savedEmps = localStorage.getItem("cdx_attendance_emps");
-    const savedAtt = localStorage.getItem("cdx_attendance_data");
-    if (savedEmps) setEmployees(JSON.parse(savedEmps));
-    if (savedAtt) setAttendance(JSON.parse(savedAtt));
+    const fetchData = async () => {
+      try {
+        const res = await fetch("/api/attendance");
+        if (res.ok) {
+          const data = await res.json();
+          setEmployees(data.employees || []);
+          setAttendance(data.records || {});
+        }
+      } catch (error) {
+        console.error("Failed to fetch attendance data:", error);
+      }
+    };
+    fetchData();
   }, []);
 
   // Save data
-  const saveData = (emps: Employee[], att: Record<string, Record<string, AttendanceStatus>>) => {
+  const saveData = async (emps: Employee[], att: Record<string, Record<string, AttendanceStatus>>) => {
     setEmployees(emps);
     setAttendance(att);
-    localStorage.setItem("cdx_attendance_emps", JSON.stringify(emps));
-    localStorage.setItem("cdx_attendance_data", JSON.stringify(att));
+    try {
+      await fetch("/api/attendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employees: emps, records: att }),
+      });
+    } catch (error) {
+      console.error("Failed to save attendance data:", error);
+    }
   };
 
   const year = currentDate.getFullYear();
