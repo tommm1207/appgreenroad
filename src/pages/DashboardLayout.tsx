@@ -48,7 +48,7 @@ export default function DashboardLayout() {
       <div className="md:hidden bg-white border-b border-slate-200 p-4 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-lg overflow-hidden shrink-0 shadow-sm border border-slate-200">
-            <img src="/logo.jpg" alt="CDX Logo" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            <img src="/logo.svg" alt="CDX Logo" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
           </div>
           <h1 className="font-bold text-slate-900 leading-tight">CDX</h1>
         </div>
@@ -75,7 +75,7 @@ export default function DashboardLayout() {
         <div className="p-6 border-b border-slate-200 flex items-center justify-between md:justify-start gap-3">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg overflow-hidden shrink-0 shadow-sm border border-slate-200">
-              <img src="/logo.jpg" alt="CDX Logo" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+              <img src="/logo.svg" alt="CDX Logo" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             </div>
             <div>
               <h1 className="font-bold text-slate-900 leading-tight">CDX</h1>
