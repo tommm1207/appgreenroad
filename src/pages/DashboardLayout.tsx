@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, FileBarChart, Users, LogOut, Building2, Wallet, Package, UsersRound, Settings, CalendarCheck, Menu, X, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, FileBarChart, Users, LogOut, Wallet, Package, UsersRound, Settings, CalendarCheck, Menu, X, ShieldAlert, UserCircle } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { Button } from "@/src/components/ui/button";
 
@@ -26,8 +26,8 @@ export default function DashboardLayout() {
   };
 
   const allNavItems = [
-    { name: "Tổng quan", path: "/", icon: LayoutDashboard, roles: ["admin", "user"] },
-    { name: "Quản lý Kho", path: "/inventory", icon: Package, roles: ["admin", "user"] },
+    { name: "Trang chủ", path: "/", icon: LayoutDashboard, roles: ["admin", "user"] },
+    { name: "Kho", path: "/inventory", icon: Package, roles: ["admin", "user"] },
     { name: "Chấm công", path: "/attendance", icon: CalendarCheck, roles: ["admin", "user"] },
     { name: "Báo cáo", path: "/reports", icon: FileBarChart, roles: ["admin", "user"] },
     { name: "Chi phí", path: "/costs", icon: Wallet, roles: ["admin"] },
@@ -38,29 +38,44 @@ export default function DashboardLayout() {
 
   const navItems = allNavItems.filter(item => item.roles.includes(userRole));
 
+  // Items for mobile bottom nav (max 4-5 items)
+  const mobileNavItems = navItems.slice(0, 4);
+
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
-      {/* Mobile Topbar */}
-      <div className="md:hidden bg-white border-b border-slate-200 p-4 flex items-center justify-between sticky top-0 z-30">
+    <div className="min-h-screen bg-[#F1F8E9] flex flex-col">
+      {/* Fixed Top Navbar */}
+      <nav className="fixed top-0 left-0 right-0 h-[60px] bg-[#2E7D32] text-white flex items-center justify-between px-3 md:px-4 z-50 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-lg overflow-hidden shrink-0 shadow-sm border border-slate-200">
-            <img src="/logo.png" alt="CDX Logo" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+          <button 
+            className="p-2 hover:bg-white/10 rounded-md transition-colors md:hidden"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+          <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
+            <div className="h-8 w-8 bg-white rounded-sm p-1 flex items-center justify-center">
+              <img src="/logo.png" alt="Logo" className="h-full w-full object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            </div>
+            <span className="font-bold text-lg hidden sm:block tracking-wide">QUẢN LÝ KHO CDX</span>
           </div>
-          <h1 className="font-bold text-slate-900 leading-tight">CDX</h1>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-          {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </Button>
-      </div>
+
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 px-3 py-1.5 hover:bg-white/10 rounded-md cursor-pointer transition-colors">
+            <UserCircle className="h-5 w-5" />
+            <span className="font-medium hidden md:block">{userName}</span>
+          </div>
+        </div>
+      </nav>
 
       {/* Sidebar Overlay for Mobile */}
       {isMobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-slate-900/50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={closeMobileMenu}
         />
       )}
@@ -68,33 +83,18 @@ export default function DashboardLayout() {
       {/* Sidebar */}
       <aside 
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col transform transition-transform duration-200 ease-in-out md:relative md:translate-x-0",
+          "fixed top-[60px] bottom-0 left-0 z-40 w-[260px] bg-white border-r border-slate-200 flex flex-col transform transition-transform duration-300 ease-in-out md:translate-x-0 shadow-sm",
           isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="p-6 border-b border-slate-200 flex items-center justify-between md:justify-start gap-3">
+        <div className="p-4 border-b border-slate-100 bg-slate-50/50">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg overflow-hidden shrink-0 shadow-sm border border-slate-200">
-              <img src="/logo.png" alt="CDX Logo" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-            </div>
-            <div>
-              <h1 className="font-bold text-slate-900 leading-tight">CDX</h1>
-              <p className="text-xs text-slate-500">Quản lý thi công</p>
-            </div>
-          </div>
-          <Button variant="ghost" size="icon" className="md:hidden" onClick={closeMobileMenu}>
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
-        
-        <div className="px-4 pt-4 pb-2">
-          <div className="bg-slate-100 rounded-lg p-3 flex items-center gap-3">
-            <div className="h-8 w-8 bg-brand-200 rounded-full flex items-center justify-center text-brand-800 font-bold">
+            <div className="h-10 w-10 bg-[#2E7D32]/10 rounded-full flex items-center justify-center text-[#2E7D32] font-bold text-lg">
               {userName.charAt(0).toUpperCase()}
             </div>
             <div className="overflow-hidden">
-              <p className="text-sm font-bold text-slate-900 truncate">{userName}</p>
-              <p className="text-xs text-slate-500 flex items-center gap-1">
+              <p className="text-sm font-bold text-slate-800 truncate">{userName}</p>
+              <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
                 {userRole === 'admin' ? <ShieldAlert className="h-3 w-3 text-amber-500" /> : null}
                 {userRole === 'admin' ? 'Quản trị viên' : 'Nhân viên'}
               </p>
@@ -102,7 +102,7 @@ export default function DashboardLayout() {
           </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 py-3 px-2 space-y-1 overflow-y-auto">
           {navItems.map((item) => (
             <NavLink
               key={item.path}
@@ -110,23 +110,23 @@ export default function DashboardLayout() {
               onClick={closeMobileMenu}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 active:scale-[0.98]",
+                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
                   isActive
-                    ? "bg-brand-50 text-brand-700"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    ? "bg-[#2E7D32]/10 text-[#2E7D32]"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 )
               }
             >
-              <item.icon className="h-5 w-5" />
+              <item.icon className={cn("h-5 w-5", "transition-colors")} />
               {item.name}
             </NavLink>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-200">
+        <div className="p-3 border-t border-slate-100">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2.5 w-full rounded-md text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-600 transition-all duration-200 active:scale-[0.98]"
+            className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 transition-all duration-200"
           >
             <LogOut className="h-5 w-5" />
             Đăng xuất
@@ -134,12 +134,31 @@ export default function DashboardLayout() {
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden h-[calc(100vh-65px)] md:h-screen">
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+      {/* Main Content Area */}
+      <main className="flex-1 pt-[60px] md:pl-[260px] pb-[65px] md:pb-0 flex flex-col min-h-screen">
+        <div className="flex-1 p-3 md:p-6 overflow-x-hidden">
           <Outlet />
         </div>
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[65px] bg-white border-t border-slate-200 flex items-center justify-around z-40 px-1 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+        {mobileNavItems.map((item) => (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            className={({ isActive }) =>
+              cn(
+                "flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors",
+                isActive ? "text-[#2E7D32]" : "text-slate-500 hover:text-slate-900"
+              )
+            }
+          >
+            <item.icon className="h-5 w-5" />
+            <span className="text-[10px] font-medium">{item.name}</span>
+          </NavLink>
+        ))}
+      </nav>
     </div>
   );
 }

@@ -34,6 +34,16 @@ export default function ModulePage() {
     onConfirm: () => {}
   });
 
+  const [userRole, setUserRole] = useState("user");
+
+  useEffect(() => {
+    const userStr = localStorage.getItem("currentUser");
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      setUserRole(user.role || "user");
+    }
+  }, []);
+
   // Format ID to readable title
   const title = id
     ? id.split("-").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")
@@ -148,7 +158,7 @@ export default function ModulePage() {
       
       // Specific default headers for HR module to support login
       if (id === "quan-ly-nhan-su") {
-        defaultHeaders = ["ID", "Tên", "app_pass", "Phân quyền", "Phòng ban", "Trạng thái"];
+        defaultHeaders = ["ID", "Tên", "Mật khẩu", "Phân quyền", "Phòng ban", "Trạng thái"];
       }
       
       saveDataAndHeaders(defaultHeaders, tableData);
@@ -250,6 +260,13 @@ export default function ModulePage() {
     });
   }, [tableData, headers, searchQuery]);
 
+  const visibleHeaders = useMemo(() => {
+    return headers.filter(h => {
+      if (h === "Mật khẩu" && userRole !== "admin") return false;
+      return true;
+    });
+  }, [headers, userRole]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -327,9 +344,9 @@ export default function ModulePage() {
                       onChange={toggleSelectAll}
                     />
                   </th>
-                  {headers.length > 0 ? (
+                  {visibleHeaders.length > 0 ? (
                     <>
-                      {headers.map((header, idx) => (
+                      {visibleHeaders.map((header, idx) => (
                         <th key={idx} className="px-6 py-4 font-medium whitespace-nowrap">
                           {header}
                         </th>
@@ -359,9 +376,11 @@ export default function ModulePage() {
                           onChange={() => toggleSelectRow(row._id)}
                         />
                       </td>
-                      {headers.map((header, colIndex) => (
+                      {visibleHeaders.map((header, colIndex) => (
                         <td key={colIndex} className="px-6 py-4 whitespace-nowrap">
-                          {row[header] !== undefined && row[header] !== null ? String(row[header]) : ""}
+                          {row[header] !== undefined && row[header] !== null ? (
+                            header === "Mật khẩu" ? "••••••••" : String(row[header])
+                          ) : ""}
                         </td>
                       ))}
                       <td className="px-6 py-4 whitespace-nowrap text-right">

@@ -8,40 +8,10 @@ export default function Login() {
   const [userId, setUserId] = useState("");
   const [appPass, setAppPass] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Initialize default admin if no users exist
-  useEffect(() => {
-    const initializeAdmin = async () => {
-      try {
-        const res = await fetch("/api/modules/quan-ly-nhan-su");
-        if (res.ok) {
-          const data = await res.json();
-          if (!data.data || data.data.length === 0) {
-            const defaultAdmin = [
-              {
-                _id: "default-admin-id",
-                ID: "admin",
-                app_pass: "admin",
-                "Phân quyền": "admin",
-                "Tên": "Quản trị viên"
-              }
-            ];
-            const defaultHeaders = ["ID", "Tên", "app_pass", "Phân quyền"];
-            
-            await fetch("/api/modules/quan-ly-nhan-su", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ headers: defaultHeaders, data: defaultAdmin }),
-            });
-          }
-        }
-      } catch (error) {
-        console.error("Failed to initialize admin:", error);
-      }
-    };
-    initializeAdmin();
-  }, []);
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbwPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqP/exec"; // Thay bằng URL thật của bạn
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,123 +22,100 @@ export default function Login() {
       return;
     }
 
-    let users = [];
+    setIsLoading(true);
+
     try {
-      const res = await fetch("/api/modules/quan-ly-nhan-su");
-      if (res.ok) {
-        const data = await res.json();
-        users = data.data || [];
+      // Gọi lên Google Apps Script API
+      const response = await fetch(`${GAS_URL}?action=loginUser&args=${encodeURIComponent(JSON.stringify([userId, appPass]))}`);
+      const data = await response.json();
+
+      if (data.user) {
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("currentUser", JSON.stringify({ 
+          id: data.user.id, 
+          name: data.user.name,
+          role: data.user.role.toLowerCase().includes("admin") ? "admin" : "user" 
+        }));
+        navigate("/");
+      } else {
+        setError(data.error || "Sai tài khoản hoặc mật khẩu");
       }
-    } catch (error) {
-      console.error("Failed to fetch users:", error);
-    }
-
-    // Find user by ID (case-insensitive key match just in case)
-    const user = users.find((u: any) => {
-      const keys = Object.keys(u);
-      
-      const idKey = keys.find(k => {
-        const lower = k.toLowerCase().trim();
-        return lower === "id" || lower === "mã nv" || lower === "mã nhân viên" || lower === "manv";
-      });
-      
-      const passKey = keys.find(k => {
-        const lower = k.toLowerCase().trim();
-        return lower === "app_pass" || lower === "app pass" || lower === "password" || lower === "mật khẩu" || lower === "mat khau" || lower === "pass";
-      });
-
-      if (!idKey || !passKey) return false;
-      
-      return String(u[idKey]).trim() === userId.trim() && String(u[passKey]).trim() === appPass.trim();
-    });
-
-    if (user) {
-      const keys = Object.keys(user);
-      const roleKey = keys.find(k => {
-        const lower = k.toLowerCase().trim();
-        return lower === "phân quyền" || lower === "phan quyen" || lower === "role" || lower === "quyền" || lower === "quyen";
-      });
-      const nameKey = keys.find(k => {
-        const lower = k.toLowerCase().trim();
-        return lower === "tên" || lower === "name" || lower === "họ và tên" || lower === "ho ten" || lower === "họ tên";
-      });
-
-      const role = roleKey ? String(user[roleKey]).toLowerCase() : "user";
-      const userName = nameKey ? String(user[nameKey]) : userId;
-      
-      localStorage.setItem("isAuthenticated", "true");
-      localStorage.setItem("currentUser", JSON.stringify({ 
-        id: userId, 
-        name: userName,
-        role: role.includes("admin") ? "admin" : "user" 
-      }));
-      
-      navigate("/");
-    } else if (userId === "admin" && appPass === "admin") {
-      // Fallback master admin in case local storage has data but no admin account
-      localStorage.setItem("isAuthenticated", "true");
-      localStorage.setItem("currentUser", JSON.stringify({ 
-        id: "admin", 
-        name: "Quản trị viên",
-        role: "admin" 
-      }));
-      
-      navigate("/");
-    } else {
-      setError("ID hoặc App Pass không chính xác!");
+    } catch (err) {
+      console.error("Login error:", err);
+      // Fallback cho môi trường dev nếu chưa có link thật
+      if (userId === "admin" && appPass === "admin") {
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("currentUser", JSON.stringify({ 
+          id: "admin", 
+          name: "Quản trị viên",
+          role: "admin" 
+        }));
+        navigate("/");
+      } else {
+        setError("Lỗi kết nối đến máy chủ. Vui lòng thử lại sau.");
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-2 text-center">
+    <div className="min-h-screen flex items-center justify-center bg-[#F1F8E9] p-4">
+      <Card className="w-full max-w-md border-0 shadow-lg rounded-2xl overflow-hidden">
+        <CardHeader className="space-y-2 text-center pt-8 pb-4">
           <div className="flex justify-center mb-4">
-            <div className="h-24 w-24 rounded-2xl overflow-hidden shadow-md border border-slate-200">
-              <img src="/logo.png" alt="CDX Logo" className="h-full w-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            <div className="h-20 w-auto">
+              <img src="/logo.png" alt="CDX Logo" className="h-full w-auto object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Quản lý thi công CDX</CardTitle>
-          <CardDescription>
-            Công ty Cổ phần Xuất Nhập Khẩu Con Đường Xanh
-          </CardDescription>
+          <CardTitle className="text-xl font-bold uppercase text-[#2E7D32] tracking-wide">
+            Hệ Thống Quản Lý
+          </CardTitle>
         </CardHeader>
         <form onSubmit={handleLogin}>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-5 px-6 md:px-8">
             {error && (
               <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
                 {error}
               </div>
             )}
-            <div className="space-y-2">
-              <label className="text-sm font-medium leading-none" htmlFor="userId">
-                ID Nhân viên
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-600" htmlFor="userId">
+                Mã nhân viên (ID)
               </label>
               <Input
                 id="userId"
-                placeholder="Nhập ID Nhân viên"
+                placeholder="Nhập ID"
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 required
+                disabled={isLoading}
+                className="h-12 rounded-xl bg-slate-50 border-slate-200 focus-visible:ring-[#2E7D32]"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium leading-none" htmlFor="appPass">
-                App Pass
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-600" htmlFor="appPass">
+                Mật khẩu
               </label>
               <Input
                 id="appPass"
                 type="password"
-                placeholder="Nhập App Pass"
+                placeholder="Nhập mật khẩu"
                 value={appPass}
                 onChange={(e) => setAppPass(e.target.value)}
                 required
+                disabled={isLoading}
+                className="h-12 rounded-xl bg-slate-50 border-slate-200 focus-visible:ring-[#2E7D32]"
               />
             </div>
           </CardContent>
-          <CardFooter>
-            <Button type="submit" className="w-full">
-              Đăng nhập
+          <CardFooter className="px-6 md:px-8 pb-8 pt-4">
+            <Button 
+              type="submit" 
+              className="w-full h-12 text-base font-bold uppercase tracking-wide rounded-xl bg-gradient-to-r from-[#2E7D32] to-[#388E3C] hover:from-[#1B5E20] hover:to-[#2E7D32] shadow-md transition-all" 
+              disabled={isLoading}
+            >
+              {isLoading ? "Đang xử lý..." : "Đăng nhập"}
             </Button>
           </CardFooter>
         </form>
